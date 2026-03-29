@@ -512,6 +512,13 @@ dependencies = [
     { name = "torch" },
 ]
 
+[package.optional-dependencies]
+dev = [
+    { name = "huggingface-hub" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "huggingface-hub" },
@@ -522,13 +529,17 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "gguf", specifier = ">=0.18.0" },
+    { name = "huggingface-hub", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "llama-cpp-python", specifier = ">=0.3.19" },
     { name = "onnx", specifier = ">=1.21.0" },
     { name = "onnxruntime", specifier = ">=1.24.4" },
     { name = "pillow", specifier = ">=12.1.1" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.8" },
     { name = "safetensors", specifier = ">=0.7.0" },
     { name = "torch", specifier = ">=2.11.0" },
 ]
+provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
