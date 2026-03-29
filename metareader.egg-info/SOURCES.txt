@@ -1,0 +1,12 @@
+README
+pyproject.toml
+uv.lock
+metareader/__init__.py
+metareader/model_tags.py
+metareader/read_tags.py
+metareader.egg-info/PKG-INFO
+metareader.egg-info/SOURCES.txt
+metareader.egg-info/dependency_links.txt
+metareader.egg-info/entry_points.txt
+metareader.egg-info/requires.txt
+metareader.egg-info/top_level.txt

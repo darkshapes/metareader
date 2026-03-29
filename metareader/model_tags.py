@@ -394,7 +394,7 @@ def main(
             formatter_class=argparse.RawTextHelpFormatter,
             description="Scan the state dict metadata from a folder of files at [path] to the console,\
                  then write to a json file at [save]\nOffline function.",
-            usage="nnll-meta ~/Downloads/models/images -s ~Downloads/models/metadata",
+            usage="meta ~/Downloads/models/images -s ~Downloads/models/metadata",
             epilog=f"Valid input formats: {[*ExtensionType.MODEL]}",
         )
         parser.add_argument("path", help="Path to directory where files should be analyzed. (default .)", default=os.getcwd())

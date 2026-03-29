@@ -1,7 +1,22 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
 [project]
+requires-python = ">=3.11"
+authors = [{ name = "darkshapes", email = "91800957+exdysa@users.noreply.github.com" }]
 name = "metareader"
 version = "0.1.0"
 description = "Minimal reader for ml models and images metadata"
 readme = "README.md"
-requires-python = ">=3.11"
 dependencies = ["gguf>=0.18.0", "llama-cpp-python>=0.3.19", "onnx>=1.21.0", "onnxruntime>=1.24.4", "pillow>=12.1.1", "safetensors>=0.7.0", "torch>=2.11.0"]
+[project.scripts]
+meta = "metareader.model_tags:main"
+
+[tool.setuptools_scm]
+write_to = "_version.py"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["metareader*"]
+exclude = ["tests*"]
