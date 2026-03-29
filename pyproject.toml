@@ -10,8 +10,9 @@ version = "0.1.0"
 description = "Minimal reader for ml models and images metadata"
 readme = "README.md"
 dependencies = ["gguf>=0.18.0", "llama-cpp-python>=0.3.19", "onnx>=1.21.0", "onnxruntime>=1.24.4", "pillow>=12.1.1", "safetensors>=0.7.0", "torch>=2.11.0"]
+
 [project.scripts]
-meta = "metareader.model_tags:main"
+meta = "metareader.read_tags:main"
 
 [tool.setuptools_scm]
 write_to = "_version.py"
@@ -20,3 +21,6 @@ write_to = "_version.py"
 where = ["."]
 include = ["metareader*"]
 exclude = ["tests*"]
+
+[dependency-groups]
+dev = ["huggingface-hub>=1.8.0", "pytest>=9.0.2", "ruff>=0.15.8"]

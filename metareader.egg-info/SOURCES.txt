@@ -10,3 +10,6 @@ metareader.egg-info/dependency_links.txt
 metareader.egg-info/entry_points.txt
 metareader.egg-info/requires.txt
 metareader.egg-info/top_level.txt
+tests/test_gguf_tags.py
+tests/test_png_tag_parsing.py
+tests/test_safetensors_tags.py

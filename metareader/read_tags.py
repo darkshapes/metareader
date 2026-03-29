@@ -93,7 +93,7 @@ class MetadataFileReader:
             except (tomllib.TOMLDecodeError, json.decoder.JSONDecodeError) as error_log:
                 raise SyntaxError(f"Couldn't read file {file_path_named}") from error_log
 
-    def read_header(self, file_path_named: str) -> Optional[dict]:
+    def read_header(self, file_path_named: str, separate_desc: bool = True) -> Optional[dict]:
         """
         Direct file read operations for various file formats\n
         :param file_path_named: Location of file with file name and path
@@ -101,21 +101,93 @@ class MetadataFileReader:
         """
         from pathlib import Path
 
-        from metadata import ExtensionType as Ext
-        from metadata.model_tags import ReadModelTags
+        from metareader import ExtensionType as Ext
+        from metareader.model_tags import ReadModelTags
 
         ext = Path(file_path_named).suffix.lower()
-        if ext in Ext.JPEG:
-            return self._read_jpg_header(file_path_named)
-        if ext in Ext.PNG_:
-            return self._read_png_header(file_path_named)
-        for file_types in Ext.SCHEMA:
-            if ext in file_types:
+
+        match ext:
+            case ext if ext in Ext.JPEG:
+                return self._read_jpg_header(file_path_named)
+            case ext if ext in Ext.PNG_:
+                return self._read_png_header(file_path_named)
+            case ext if ext in [*Ext.SCHEMA]:
                 return self._read_schema_file(file_path_named)
-        for file_types in Ext.PLAIN:
-            if ext in file_types:
+            case ext if ext in [*Ext.PLAIN]:
                 return self._read_txt_contents(file_path_named)
-        for file_types in Ext.MODEL:
-            if ext in file_types:
+            case ext if ext in [*Ext.MODEL]:
                 model_tool = ReadModelTags()
-                return model_tool.read_metadata_from(file_path_named)
+                return model_tool.read_metadata_from(file_path_named, separate_desc)
+
+
+def main(
+    path: str | None = None,
+    save_location: str | None = None,
+    separate_desc: bool | None = None,
+    unsafe: bool | None = None,
+) -> None:
+    import argparse
+    from sys import modules as sys_modules
+
+    import json
+    import os
+
+    from metareader import ensure_path, ExtensionType as Ext
+
+    if "pytest" not in sys_modules:
+        parser = argparse.ArgumentParser(
+            formatter_class=argparse.RawTextHelpFormatter,
+            description="Scan metadata from files or folders at [path] to the console,\
+                 then write to a json file at [save]\nOffline function.",
+            usage="meta ~/Downloads/models/images -s ~Downloads/models/metadata",
+            epilog=f"Valid input formats: {[*Ext.MODEL]}",
+        )
+        parser.add_argument("path", help="Path to directory or file where files should be analyzed. (default .)", default=os.getcwd())
+        parser.add_argument("-s", "--save_to_folder_path", required=False, help="Path where output should be stored. (default: '.')", type=str, default=".")
+        parser.add_argument("-d", "--separate_desc", required=False, action="store_true", help="Ignore the metadata from the header. (default: False)")
+        parser.add_argument("-u", "--unsafe", action="store_true", help="Try to read non-standard type files. MAY INCLUDE NON-MODEL FILES. (default: False)")
+        args = parser.parse_args()
+    else:
+        args = None
+
+    folder_path_named = os.getcwd() if not args else args.path
+    separate_desc = True if not args else args.separate_desc
+    save_location = os.getcwd() if not args else args.save_to_folder_path
+    unsafe = False if not args else args.unsafe
+
+    file_reader = MetadataFileReader()
+
+    target_files = []
+    if os.path.isfile(folder_path_named):
+        target_files = [folder_path_named]
+    elif os.path.isdir(folder_path_named):
+        for root, folders, files in os.walk(folder_path_named):
+            for file_name in files:
+                target_files.append(os.path.join(root, file_name))
+    else:
+        print(f"Path does not exist: {folder_path_named}")
+        return
+
+    for file_path_named in target_files:
+        if not unsafe:
+            metadata = file_reader.read_header(file_path_named, separate_desc)
+        else:
+            from metareader.model_tags import ReadModelTags
+
+            unsafe_reader = ReadModelTags()
+            metadata = unsafe_reader.attempt_all_open(file_path_named, separate_desc)
+        if metadata is not None and save_location:
+            ensure_path(save_location)
+            document = os.path.join(folder_path_named, os.path.basename(file_path_named))
+            output_name = f"{document}.json" if ".json" not in document else document
+
+            with open(output_name, "tw", encoding="UTF-8") as i:
+                try:
+                    os.remove(output_name)
+                except FileNotFoundError:
+                    pass
+                json.dump(metadata, i, ensure_ascii=False, indent=4, sort_keys=False)
+
+
+if __name__ == "__main__":
+    main()

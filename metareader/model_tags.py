@@ -74,7 +74,6 @@ class ReadModelTags:
         :type separate_desc str
         :return: A `dict` with the header data prepared to read
         """
-        from sys import modules as sys_modules
 
         def attempt_metadata(extraction_func, fallback_func=None):
             """Attempt to extract metadata using extraction_func.
@@ -87,27 +86,30 @@ class ReadModelTags:
         metadata = None
         file_extension = Path(file_path_named).suffix
 
-        if file_extension in ExtensionType.SAFE:
-            attempt_metadata(
-                lambda: self.metadata_from_safetensors(file_path_named, separate_desc),
-                lambda: self.metadata_from_safe_open(file_path_named, separate_desc),
-            )
-        elif file_extension in ExtensionType.GGUF:
-            if self.gguf_check(file_path_named):
+        match file_extension:
+            case ext if ext in ExtensionType.SAFE:
                 attempt_metadata(
-                    lambda: self.create_gguf_reader(file_path_named),
-                    lambda: self.create_llama_parser(file_path_named),
+                    lambda: self.metadata_from_safetensors(file_path_named, separate_desc),
+                    lambda: self.metadata_from_safe_open(file_path_named, separate_desc),
                 )
-        elif file_extension in ExtensionType.PICK:
-            attempt_metadata(
-                lambda: self.meta_load_pickletensor(file_path_named),
-                lambda: self.meta_load_pickletensor(file_path_named),
-            )
-        elif file_extension in ExtensionType.ONNX and "pytest" not in sys_modules:
-            attempt_metadata(
-                lambda: self.metadata_from_onnx_rt(file_path_named, separate_desc),
-                # lambda: self.metadata_from_onnx(file_path_named, separate_desc),
-            )
+            case ext if ext in ExtensionType.GGUF:
+                if self.gguf_check(file_path_named):
+                    attempt_metadata(
+                        lambda: self.create_gguf_reader(file_path_named),
+                        lambda: self.create_llama_parser(file_path_named),
+                    )
+            case ext if ext in ExtensionType.ONNX:
+                attempt_metadata(
+                    lambda: self.metadata_from_onnx_rt(file_path_named, separate_desc),
+                    lambda: self.metadata_from_onnx(file_path_named, separate_desc),
+                )
+            case ext if ext in ExtensionType.PICK:
+                attempt_metadata(
+                    lambda: self.meta_load_pickletensor(file_path_named),
+                    lambda: self.meta_load_pickletensor(file_path_named),
+                )
+            case _:
+                pass
 
         return metadata
 
@@ -143,15 +145,10 @@ class ReadModelTags:
         except ValueError as error_log:
             print("Error reading GGUF header from %s", f"{file_path_named}: {error_log}", tb=error_log.__traceback__)
         else:
-            if not magic_number and magic_number != self.GGUF_MAGIC_NUMBER:
-                print("Invalid GGUF magic number in %s", file_path_named)
-                result = False
-            elif version < 2:
-                print("Unsupported GGUF version %s", version, file_path_named)
-                result = False
-            elif magic_number == self.GGUF_MAGIC_NUMBER and version >= 2:
+            if magic_number == self.GGUF_MAGIC_NUMBER and version >= 2:
                 result = True
             else:
+                print(f"Invalid GGUF magic number or unsupported GGUF version '{file_path_named} : {version} >= 2")
                 result = False
         return result
 
