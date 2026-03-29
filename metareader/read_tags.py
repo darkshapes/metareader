@@ -197,12 +197,19 @@ def main(
         args = None
 
     folder_path_named = os.getcwd() if not args else path if not args.path else args.path
-    separate_desc = True if not args else args.separate_desc
+    separate = True if not args else args.separate_desc
     save_location = os.getcwd() if not args else args.save_to_folder_path
     unsafe = False if not args else args.unsafe
 
+    collect_args = CollectArgs(
+        folder_path_named=folder_path_named,
+        save_location=save_location,
+        separate_desc=separate,
+        unsafe=unsafe,
+    )
+
     file_reader = ReadTags()
-    file_reader.collect(folder_path_named, separate_desc, save_location, unsafe)
+    file_reader.collect(collect_args)
 
 
 if __name__ == "__main__":
