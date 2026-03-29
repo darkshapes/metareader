@@ -5,10 +5,21 @@
 
 # pylint: disable=import-outside-toplevel
 
+from dataclasses import dataclass
 from typing import Optional
 
 
-class MetadataFileReader:
+@dataclass
+class CollectArgs:
+    """Arguments for collect operation"""
+
+    folder_path_named: str
+    save_location: bool
+    separate_desc: bool
+    unsafe: bool
+
+
+class ReadTags:
     """Interface for metadata and text read operations"""
 
     def __init__(self) -> None:
@@ -16,6 +27,43 @@ class MetadataFileReader:
 
         self.nfo = print
         self.dbug = print
+
+    def collect(self, args: CollectArgs):
+        import json
+        import os
+
+        folder_path_named = args.folder_path_named
+        save_location = args.save_location
+        target_files = []
+        assert os.path.exists(folder_path_named), print(f"Path does not exist: {folder_path_named}")
+
+        if os.path.isfile(folder_path_named):
+            target_files = [folder_path_named]
+        elif os.path.isdir(folder_path_named):
+            for root, folders, files in os.walk(folder_path_named):
+                for file_name in files:
+                    target_files.append(os.path.join(root, file_name))
+
+        for file_path_named in target_files:
+            if not args.unsafe:
+                metadata = self.read_header.read_header(file_path_named, args.separate_desc)
+            else:
+                from metareader.model_tags import ModelTags
+                from metareader.resources import ensure_path
+
+                unsafe_reader = ModelTags()
+                metadata = unsafe_reader.attempt_all_open(file_path_named, args.separate_desc)
+            if metadata is not None and save_location:
+                ensure_path(save_location)
+                document = os.path.join(folder_path_named, os.path.basename(file_path_named))
+                output_name = f"{document}.json" if ".json" not in document else document
+
+                with open(output_name, "tw", encoding="UTF-8") as i:
+                    try:
+                        os.remove(output_name)
+                    except FileNotFoundError:
+                        pass
+                    json.dump(metadata, i, ensure_ascii=False, indent=4, sort_keys=False)
 
     def _read_jpg_header(self, file_path_named: str) -> Optional[dict]:
         """
@@ -80,7 +128,7 @@ class MetadataFileReader:
         import os
         import tomllib
 
-        from nnll.configure.constants import ExtensionType as Ext
+        from metareader.resources import ExtensionType as Ext
 
         _, ext = os.path.splitext(file_path_named)
         if ext in Ext.TOML:
@@ -101,8 +149,8 @@ class MetadataFileReader:
         """
         from pathlib import Path
 
-        from metareader import ExtensionType as Ext
-        from metareader.model_tags import ReadModelTags
+        from metareader.model_tags import ModelTags
+        from metareader.resources import ExtensionType as Ext
 
         ext = Path(file_path_named).suffix.lower()
 
@@ -116,7 +164,7 @@ class MetadataFileReader:
             case ext if ext in [*Ext.PLAIN]:
                 return self._read_txt_contents(file_path_named)
             case ext if ext in [*Ext.MODEL]:
-                model_tool = ReadModelTags()
+                model_tool = ModelTags()
                 return model_tool.read_metadata_from(file_path_named, separate_desc)
 
 
@@ -127,12 +175,10 @@ def main(
     unsafe: bool | None = None,
 ) -> None:
     import argparse
+    import os
     from sys import modules as sys_modules
 
-    import json
-    import os
-
-    from metareader import ensure_path, ExtensionType as Ext
+    from metareader.resources import ExtensionType as Ext
 
     if "pytest" not in sys_modules:
         parser = argparse.ArgumentParser(
@@ -150,43 +196,13 @@ def main(
     else:
         args = None
 
-    folder_path_named = os.getcwd() if not args else args.path
+    folder_path_named = os.getcwd() if not args else path if not args.path else args.path
     separate_desc = True if not args else args.separate_desc
     save_location = os.getcwd() if not args else args.save_to_folder_path
     unsafe = False if not args else args.unsafe
 
-    file_reader = MetadataFileReader()
-
-    target_files = []
-    if os.path.isfile(folder_path_named):
-        target_files = [folder_path_named]
-    elif os.path.isdir(folder_path_named):
-        for root, folders, files in os.walk(folder_path_named):
-            for file_name in files:
-                target_files.append(os.path.join(root, file_name))
-    else:
-        print(f"Path does not exist: {folder_path_named}")
-        return
-
-    for file_path_named in target_files:
-        if not unsafe:
-            metadata = file_reader.read_header(file_path_named, separate_desc)
-        else:
-            from metareader.model_tags import ReadModelTags
-
-            unsafe_reader = ReadModelTags()
-            metadata = unsafe_reader.attempt_all_open(file_path_named, separate_desc)
-        if metadata is not None and save_location:
-            ensure_path(save_location)
-            document = os.path.join(folder_path_named, os.path.basename(file_path_named))
-            output_name = f"{document}.json" if ".json" not in document else document
-
-            with open(output_name, "tw", encoding="UTF-8") as i:
-                try:
-                    os.remove(output_name)
-                except FileNotFoundError:
-                    pass
-                json.dump(metadata, i, ensure_ascii=False, indent=4, sort_keys=False)
+    file_reader = ReadTags()
+    file_reader.collect(folder_path_named, separate_desc, save_location, unsafe)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import struct
 import shutil
 import os
 
-from metareader.model_tags import ReadModelTags
+from metareader.model_tags import ModelTags
 import json
 from huggingface_hub import snapshot_download
 from metareader import ensure_path
@@ -18,12 +18,12 @@ class TestLoadMetadataGGUF(unittest.TestCase):
     local_test_folder = os.path.dirname(os.path.abspath(__file__))
     temp_folder = str(ensure_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_folder")))
 
-    @patch("metareader.model_tags.ReadModelTags.create_llama_parser")
+    @patch("metareader.model_tags.ModelTags.create_llama_parser")
     def setUp(self, MockParseModel) -> None:
         # Create a temporary file with known GGUF header data
         self.local_test_folder = self.local_test_folder
         self.temp_folder = self.temp_folder
-        self.model_tool = ReadModelTags()
+        self.model_tool = ModelTags()
         self.test_file_name = "test.gguf"
         magic = b"GGUF"
         with open(self.test_file_name, "wb") as f:

@@ -5,14 +5,14 @@ import unittest
 import os
 import shutil
 
-from metareader.model_tags import ReadModelTags
+from metareader.model_tags import ModelTags
 import json
 from huggingface_hub import snapshot_download
 
 
 class TestLoadMetadataSafetensors(unittest.TestCase):
     def test_metadata_from_safetensors(self):
-        model_tool = ReadModelTags()
+        model_tool = ModelTags()
         local_folder = os.path.dirname(os.path.abspath(__file__))
         local_folder_test = os.path.join(local_folder, "test_folder")
         file_name = "model.safetensors"

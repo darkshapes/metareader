@@ -4,12 +4,12 @@
 import unittest
 import os
 
-from metareader.read_tags import MetadataFileReader
+from metareader.read_tags import ReadTags
 
 
 class TestDiskInterface(unittest.TestCase):
     def setUp(self):
-        self.reader = MetadataFileReader()
+        self.reader = ReadTags()
         self.test_folder = os.path.dirname(os.path.abspath(__file__))
         self.real_file = os.path.join(self.test_folder, "test_img.png")
 

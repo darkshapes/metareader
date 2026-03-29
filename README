@@ -1,2 +1,50 @@
+metareader
+====
+A decent metadata reader for generative models and their output formats.
+
 git clone https://github.com/darkshapes/metareader
 uv sync
+
+Read an image file:
+---
+from metareader import ReadTags
+
+file = "~Downloads/file.jpg"
+reader = ReadTags()
+metadata = reader.collect(file)
+
+Read a model file:
+---
+from metareader import ReadTags
+
+file = "~Downloads/file.safetensors"
+reader = ReadTags()
+metadata = reader.collect(file)
+
+Read a directory of models
+---
+from metareader import ReadTags
+
+file = "~Downloads/"
+reader = ReadTags()
+metadata = reader.collect(file)
+
+CLI command
+---
+usage: meta ~/Downloads/models/images -s ~Downloads/models/metadata
+
+Scan metadata from files or folders at [path] to the console,                 then write to a json file at [save]
+Offline function.
+
+positional arguments:
+  path                  Path to directory or file where files should be analyzed. (default .)
+
+options:
+  -h, --help            show this help message and exit
+  -s, --save_to_folder_path SAVE_TO_FOLDER_PATH
+                        Path where output should be stored. (default: '.')
+  -d, --separate_desc   Ignore the metadata from the header. (default: False)
+  -u, --unsafe          Try to read non-standard type files. MAY INCLUDE NON-MODEL FILES. (default: False)
+
+Valid input formats: ['.safetensors', '.sft', '.onnx', '.pth', '.gguf', '.pt', '.pickletensor', '.ckpt']
+(metareader) e6d64@A3816 metareader %

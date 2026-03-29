@@ -4,13 +4,14 @@
 """Load model metadata"""
 
 # pylint: disable=import-outside-toplevel
+
 from pathlib import Path
 from typing import Dict
-import os
-from metareader import ExtensionType
+
+from metareader.resources import ExtensionType as Ext
 
 
-class ReadModelTags:
+class ModelTags:
     """Output state dict from a model file"""
 
     GGUF_MAGIC_NUMBER = b"GGUF"
@@ -44,22 +45,22 @@ class ReadModelTags:
         )
         file_extension = file_path_named.split(".")[-1]
 
-        if file_extension not in [*ExtensionType.SAFE, *ExtensionType.ONNX, *ExtensionType.PICK, *ExtensionType.MEDIA, ".py"] and self.gguf_check(file_path_named):
+        if file_extension not in [*Ext.SAFE, *Ext.ONNX, *Ext.PICK, *Ext.MEDIA, ".py"] and self.gguf_check(file_path_named):
             for read_method in meta_gguf:
                 metadata = read_method(file_path_named)
             if metadata and len(metadata) > 1:
                 return metadata
-        if file_extension not in [*ExtensionType.GGUF, *ExtensionType.ONNX, *ExtensionType.PICK, *ExtensionType.MEDIA, ".py"] and "pytest" not in sys_modules:
+        if file_extension not in [*Ext.GGUF, *Ext.ONNX, *Ext.PICK, *Ext.MEDIA, ".py"] and "pytest" not in sys_modules:
             for read_method in meta_safe:
                 metadata = read_method(file_path_named, separate_desc)
                 if metadata and len(metadata) > 1:
                     return metadata
-        if file_extension not in [*ExtensionType.GGUF, *ExtensionType.SAFE, *ExtensionType.PICK, *ExtensionType.SCHEMA, *ExtensionType.MEDIA, ".py"]:
+        if file_extension not in [*Ext.GGUF, *Ext.SAFE, *Ext.PICK, *Ext.SCHEMA, *Ext.MEDIA, ".py"]:
             for read_method in meta_onnx:
                 metadata = read_method(file_path_named, separate_desc)
                 if metadata and len(metadata) > 1:
                     return metadata
-        if file_extension not in [*ExtensionType.GGUF, *ExtensionType.SAFE, *ExtensionType.ONNX, *ExtensionType.MEDIA, ".py"]:
+        if file_extension not in [*Ext.GGUF, *Ext.SAFE, *Ext.ONNX, *Ext.MEDIA, ".py"]:
             for read_method in meta_combined:
                 metadata = read_method(file_path_named)
                 if metadata and len(metadata) > 1:
@@ -87,23 +88,23 @@ class ReadModelTags:
         file_extension = Path(file_path_named).suffix
 
         match file_extension:
-            case ext if ext in ExtensionType.SAFE:
+            case ext if ext in Ext.SAFE:
                 attempt_metadata(
                     lambda: self.metadata_from_safetensors(file_path_named, separate_desc),
                     lambda: self.metadata_from_safe_open(file_path_named, separate_desc),
                 )
-            case ext if ext in ExtensionType.GGUF:
+            case ext if ext in Ext.GGUF:
                 if self.gguf_check(file_path_named):
                     attempt_metadata(
                         lambda: self.create_gguf_reader(file_path_named),
                         lambda: self.create_llama_parser(file_path_named),
                     )
-            case ext if ext in ExtensionType.ONNX:
+            case ext if ext in Ext.ONNX:
                 attempt_metadata(
                     lambda: self.metadata_from_onnx_rt(file_path_named, separate_desc),
                     lambda: self.metadata_from_onnx(file_path_named, separate_desc),
                 )
-            case ext if ext in ExtensionType.PICK:
+            case ext if ext in Ext.PICK:
                 attempt_metadata(
                     lambda: self.meta_load_pickletensor(file_path_named),
                     lambda: self.meta_load_pickletensor(file_path_named),
@@ -122,7 +123,7 @@ class ReadModelTags:
 
         extension = Path(file_path_named).suffix.lower()
 
-        if not any(extension in ext_type for ext_type in ExtensionType.MODEL if extension):
+        if not any(extension in ext_type for ext_type in Ext.MODEL if extension):
             print("Unsupported file extension: %s", f"{extension}. Silently ignoring")
         else:
             metadata = self.attempt_file_open(file_path_named, separate_desc=separate_desc) or None
@@ -336,7 +337,7 @@ class ReadModelTags:
         :return: A mapping of metadata about the model
         """
         from onnxruntime import InferenceSession  # , get_available_providers
-        from onnxruntime.capi.onnxruntime_pybind11_state import InvalidProtobuf, NotImplemented, Fail, RuntimeException
+        from onnxruntime.capi.onnxruntime_pybind11_state import Fail, InvalidProtobuf, NotImplemented, RuntimeException
 
         try:
             onnx_sess = InferenceSession(file_path_named)
@@ -356,10 +357,10 @@ class ReadModelTags:
         :param separate_desc: Exclude or include metadata description, default True
         :return: A mapping of metadata about the model
         """
-        from onnxruntime.datasets import get_example
-        from onnx import load as onnx_load
         from google.protobuf.message import DecodeError
+        from onnx import load as onnx_load
         from onnxruntime.capi.onnxruntime_pybind11_state import InvalidProtobuf
+        from onnxruntime.datasets import get_example
 
         try:
             example = get_example(file_path_named)
@@ -371,59 +372,3 @@ class ReadModelTags:
             if separate_desc:
                 metadata = {"metadata_props": model.metadata_props}
                 return metadata
-
-
-def main(
-    folder_path_named: str | None = None,
-    save_location: str | None = os.getcwd(),
-    separate_desc: bool | None = None,
-    unsafe: bool | None = None,
-) -> None:
-    import argparse
-    from sys import modules as sys_modules
-
-    import json
-    from metareader import ensure_path
-
-    if "pytest" not in sys_modules:  # bypass in case of testing
-        # Set up argument parser
-        parser = argparse.ArgumentParser(
-            formatter_class=argparse.RawTextHelpFormatter,
-            description="Scan the state dict metadata from a folder of files at [path] to the console,\
-                 then write to a json file at [save]\nOffline function.",
-            usage="meta ~/Downloads/models/images -s ~Downloads/models/metadata",
-            epilog=f"Valid input formats: {[*ExtensionType.MODEL]}",
-        )
-        parser.add_argument("path", help="Path to directory where files should be analyzed. (default .)", default=os.getcwd())
-        parser.add_argument("-s", "--save_to_folder_path", required=False, help="Path where output should be stored. (default: '.')", type=str, default=os.getcwd())
-        parser.add_argument("-d", "--separate_desc", required=False, action="store_true", help="Ignore the metadata from the header. (default: False)", default=False)
-        parser.add_argument("-u", "--unsafe", action="store_true", help="Try to read non-standard type model files. MAY INCLUDE NON-MODEL FILES. (default: False)")
-        args = parser.parse_args()
-    else:
-        args = None
-
-    folder_path_named = os.getcwd() if not args else args.path
-    separate_desc = True if not args else args.separate_desc
-    save_location = save_location if not args else args.save_to_folder_path
-    unsafe = False if not args else args.unsafe
-    reader = ReadModelTags()
-    if folder_path_named is not None:
-        for root, folders, files in os.walk(folder_path_named):
-            for file_name in files:
-                file_path_named = os.path.join(root, file_name)
-                if not unsafe:
-                    metadata = reader.read_metadata_from(file_path_named, separate_desc=separate_desc)
-                else:
-                    metadata = reader.attempt_all_open(file_path_named, separate_desc=separate_desc)
-                if metadata is not None:
-                    save_location = ensure_path(save_location)
-                    document = os.path.join(folder_path_named, os.path.basename(file_name))
-                    with open(document, "tw", encoding="UTF-8") as i:
-                        if ".json" not in file_name:
-                            file_name += ".json"
-                        if os.path.exists(document):
-                            try:
-                                os.remove(document)
-                            except FileNotFoundError as error_log:
-                                print(f"'File was detected but not found to remove: {document}.'{error_log}", exc_info=True)
-                        json.dump(metadata, i, ensure_ascii=False, indent=4, sort_keys=False)
