@@ -1,2 +1,0 @@
-[console_scripts]
-meta = metareader.read_tags:main
