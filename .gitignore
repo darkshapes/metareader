@@ -1,0 +1,4 @@
+# Exclude Python eggs
+*.egg
+*.egg-info/
+.DS_Store
